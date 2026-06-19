@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-data-engineer
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: airbnb_db
+      MYSQL_USER: analyticsservice
+      MYSQL_PASSWORD: Af0B0NkLsou6Nwp6
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-init:
+    build: .
+    restart: "always"
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    command: airflow db init
+    depends_on:
+      - mysql-db
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - airflow-db-volume:/opt/airflow
+
+  airflow:
+    build: .
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - airflow-db-volume:/opt/airflow
+    command: webserver
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__RBAC=True               # Habilita RBAC (autenticación basada en roles)
+      - AIRFLOW__WEBSERVER__AUTHENTICATE=True       # Activa autenticación usuario
+    depends_on:
+      - mysql-db
+
+  airflow-scheduler:
+    build: .
+    restart: always
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - airflow-db-volume:/opt/airflow
+    command: airflow scheduler
+    depends_on:
+      - mysql-db
+
+  pipeline:
+    build: .
+    depends_on:
+      - mysql-db
+    environment:
+      DB_HOST: mysql-db
+      DB_PORT: 3306
+      DB_USER: analyticsservice
+      DB_PASSWORD: Af0B0NkLsou6Nwp6
+      DB_NAME: airbnb_db
+    volumes:
+      - ./logs:/app/logs
+      - ./output:/app/output
+
+volumes:
+  mysql_data:
+  airflow-db-volume:

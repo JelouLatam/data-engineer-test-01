@@ -1,0 +1,14 @@
+database:
+  host: localhost
+  port: 3306
+  user: myuser
+  password: mypassword
+  dbname: airbnb_db
+
+logging:
+  level: INFO
+  file: logs/pipeline_execution.log
+
+paths:
+  input_dir: data/
+  output_dir: output/
